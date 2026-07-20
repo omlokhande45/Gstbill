@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GST Invoice — OM Construction</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#111827;--ink2:#374151;--ink3:#6B7280;
+  --bg:#f3f4f6;--surface:#ffffff;--surface2:#f9fafb;
+  --accent:#2563eb;--accent-hover:#1d4ed8;--accent2:#eff6ff;
+  --success:#16a34a;--success-bg:#f0fdf4;
+  --warn:#d97706;--warn-bg:#fffbeb;
+  --border:#d1d5db;--border2:#9ca3af;
+  --radius:12px;--radius-sm:8px;
+  --shadow-lg:0 10px 15px -3px rgba(0,0,0,0.1),0 4px 6px -2px rgba(0,0,0,0.05);
+}
+
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;font-size:16px;line-height:1.5}
+
+/* TOPBAR */
+.topbar{background:var(--ink);color:#fff;padding:16px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.topbar-brand{display:flex;align-items:center;gap:12px}
+.topbar-logo{width:40px;height:40px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;color:#fff}
+.topbar-name{font-size:16px;font-weight:600}
+.topbar-sub{font-size:12px;color:rgba(255,255,255,0.6)}
+.topbar-actions{display:flex;gap:12px}
+
+/* ACCESSIBLE BUTTONS (Fitts's Law) */
+.btn{display:inline-flex;align-items:center;gap:8px;padding:12px 20px;border-radius:var(--radius-sm);font-size:15px;font-weight:600;cursor:pointer;transition:all .15s;border:none;outline:none;font-family:'Inter',sans-serif;min-height:48px}
+.btn-ghost{background:rgba(255,255,255,0.1);color:#fff;border:1px solid rgba(255,255,255,0.2)}
+.btn-ghost:hover{background:rgba(255,255,255,0.2)}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent-hover)}
+
+/* APPLICATION LAYOUT */
+.app{display:grid;grid-template-columns:420px 1fr;min-height:calc(100vh - 72px)}
+
+/* ACCELERATED DATA FORM PANEL */
+.form-panel{background:var(--surface);border-right:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column}
+.fp-section{padding:20px;border-bottom:1px solid var(--border)}
+.fp-section-title{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--ink2);margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.fp-section-title span.dot{width:8px;height:8px;border-radius:50%;background:var(--accent)}
+
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.form-row.full{grid-template-columns:1fr}
+.fg{display:flex;flex-direction:column;gap:6px}
+.fg label{font-size:12px;font-weight:700;color:var(--ink2);text-transform:uppercase;letter-spacing:0.5px}
+
+/* High Visibility Touch Fields */
+.fg input, .fg select{padding:12px;border:2px solid var(--border);border-radius:var(--radius-sm);font-family:'Inter',sans-serif;font-size:16px;color:var(--ink);background:var(--surface2);transition:all 0.15s;outline:none;min-height:48px}
+.fg input:focus, .fg select:focus{border-color:var(--accent);box-shadow:0 0 0 4px rgba(37,99,235,0.15);background:#fff}
+
+.mode-toggle-wrap{background:var(--surface2);border:2px solid var(--border);border-radius:var(--radius);padding:4px;display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:16px}
+.mode-btn{padding:10px;border-radius:var(--radius-sm);font-size:13px;font-weight:600;text-align:center;cursor:pointer;color:var(--ink3);border:none;background:transparent;font-family:'Inter',sans-serif;line-height:1.3}
+.mode-btn.active{background:#fff;color:var(--accent);border:1px solid var(--border);box-shadow:0 2px 4px rgba(0,0,0,0.05)}
+
+/* RETAIL HEADS-UP LIVE CALCULATOR */
+.calc-card{background:linear-gradient(135deg,#1f2937 0%,#111827 100%);border-radius:var(--radius);padding:20px;color:#fff;margin-top:8px}
+.calc-card-title{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.5);margin-bottom:12px;font-weight:700}
+.calc-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:14px}
+.calc-row .cl{color:rgba(255,255,255,0.7)}
+.calc-row .cv{font-weight:700;font-family:'JetBrains Mono',monospace;font-size:15px}
+.calc-divider{border:none;border-top:1px solid rgba(255,255,255,0.15);margin:10px 0}
+.calc-total{font-size:22px;font-weight:700;color:#3b82f6;font-family:'JetBrains Mono',monospace}
+.calc-total-label{font-size:13px;font-weight:700;color:rgba(255,255,255,0.8)}
+
+.form-bottom{padding:20px;background:var(--surface);border-top:2px solid var(--border);display:flex;gap:12px;position:sticky;bottom:0}
+.form-bottom .btn{flex:1;justify-content:center}
+
+/* PREVIEW WORKSPACE */
+.preview-panel{background:var(--bg);padding:32px 24px;overflow-y:auto;display:flex;flex-direction:column;align-items:center}
+.preview-label{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--ink3);margin-bottom:16px;width:100%;text-align:center}
+
+/* BILL FORMAT STRUCTURE */
+.bill{width:760px;background:#fff;border:2px solid #000;font-family:'Times New Roman',Times,serif;font-size:13px;color:#000;box-shadow:var(--shadow-lg)}
+.bill-header{border-bottom:2px solid #000;padding:14px;text-align:center}
+.bill-biz-name{font-size:22px;font-weight:bold;text-transform:uppercase;letter-spacing:1px}
+.bill-biz-type{font-size:13px;font-weight:bold;margin-top:2px}
+.bill-address{font-size:12px}
+.bill-gst-row, .bill-proprietor-row{display:flex;justify-content:space-between;font-size:12px;margin-top:4px}
+.bill-gst-row{border-top:1px solid #000;padding-top:4px}
+.bill-meta-row{display:grid;grid-template-columns:1fr auto 1fr;border-bottom:1px solid #000}
+.bill-meta-cell{padding:8px 12px;font-size:12px}
+.bill-meta-cell.center{text-align:center;border-left:1px solid #000;border-right:1px solid #000}
+.bill-title-box{border:2px solid #000;padding:4px 16px;font-size:14px;font-weight:bold;letter-spacing:2px}
+.bill-customer{border-bottom:1px solid #000}
+.bill-customer-row{display:grid;grid-template-columns:1fr 1fr}
+.bill-cust-cell{padding:6px 12px;font-size:12px;border-right:1px solid #000;min-height:32px}
+.bill-cust-cell:last-child{border-right:none}
+
+.bill-table{width:100%;border-collapse:collapse}
+.bill-table th,.bill-table td{border:1px solid #000;padding:6px 8px;font-size:12px;text-align:center}
+.bill-table th{font-weight:bold}
+.bill-table td.desc{text-align:left}
+.bill-table td.num{text-align:right}
+
+.bill-summary-wrap{display:flex;border-top:1px solid #000}
+.bill-summary-left{flex:1;border-right:1px solid #000;padding:8px 12px}
+.bill-summary-right{width:240px}
+.summary-row{display:grid;grid-template-columns:1fr 100px;border-bottom:1px solid #000}
+.summary-row:last-child{border-bottom:none}
+.summary-label{padding:6px 10px;font-size:12px;border-right:1px solid #000}
+.summary-val-rs{padding:6px 8px;font-size:12px;text-align:right;font-family:monospace;font-weight:bold}
+.summary-row.bold * {font-size:13px;font-weight:bold;background:#f9fafb}
+
+.bill-footer{border-top:2px solid #000}
+.bill-words-row{padding:8px 12px;font-size:12px;border-bottom:1px solid #000;min-height:36px}
+.bill-sign-row{display:flex;justify-content:flex-end;padding:16px 14px 8px}
+.sign-block{text-align:center;min-width:200px}
+.sign-line{border-top:1px solid #000;margin-top:40px;padding-top:4px;font-weight:bold}
+.jurisdiction{text-align:center;padding:6px;font-size:11px;font-style:italic;border-top:1px solid #000}
+
+.status-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.badge{display:inline-flex;align-items:center;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600}
+.badge-blue{background:var(--accent2);color:var(--accent)}
+.badge-green{background:var(--success-bg);color:var(--success)}
+.badge-warn{background:var(--warn-bg);color:var(--warn)}
+
+@media print{
+  body{background:#fff}
+  .topbar,.form-panel,.preview-label,.status-bar,.form-bottom{display:none!important}
+  .app{display:block}
+  .preview-panel{padding:0;background:#fff;display:block}
+  .bill{width:100%;box-shadow:none;border:2px solid #000;margin:0}
+  @page{size:A4;margin:10mm}
+}
+
+@media(max-width:1024px){
+  .app{grid-template-columns:1fr}
+  .form-panel{border-right:none;border-bottom:1px solid var(--border)}
+  .bill{width:100%}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-brand">
+    <div class="topbar-logo">OM</div>
+    <div>
+      <div class="topbar-name">OM Construction & Material Suppliers</div>
+      <div class="topbar-sub">GST Tax Invoice System &nbsp;·&nbsp; 27ADOPL7654G1Z2</div>
+    </div>
+  </div>
+  <div class="topbar-actions">
+    <button class="btn btn-ghost" onclick="newBill()" title="Shortcut: Esc">Reset (Esc)</button>
+    <button class="btn btn-primary" onclick="printBill()" title="Shortcut: Ctrl+S">Print & Save (Ctrl+S)</button>
+  </div>
+</div>
+
+<div class="app">
+  <div class="form-panel">
+    <form id="invoiceForm" onsubmit="event.preventDefault();">
+      
+      <!-- Sequence Section 1: Meta -->
+      <div class="fp-section">
+        <div class="fp-section-title"><span class="dot"></span>1. Base Metrics</div>
+        <div class="form-row">
+          <div class="fg">
+            <label>Invoice No.</label>
+            <input type="text" id="invoiceNo" placeholder="e.g. 036" required autofocus />
+          </div>
+          <div class="fg">
+            <label>Date</label>
+            <!-- Native date field completely solves formatting/validation bugs -->
+            <input type="date" id="invoiceDate" required />
+          </div>
+        </div>
+      </div>
+
+      <!-- Sequence Section 2: Destination -->
+      <div class="fp-section">
+        <div class="fp-section-title"><span class="dot"></span>2. Client Registry</div>
+        <div class="form-row full">
+          <div class="fg">
+            <label>Customer Name (M/s)</label>
+            <input type="text" id="customerName" placeholder="Client Firm Title" required />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="fg">
+            <label>Customer GSTIN</label>
+            <input type="text" id="customerGST" placeholder="27XXXXXXXXXXX" maxlength="15" />
+          </div>
+          <div class="fg">
+            <label>Place of Supply</label>
+            <input type="text" id="placeOfSupply" placeholder="e.g. Wardha" />
+          </div>
+        </div>
+        <div class="form-row full">
+          <div class="fg">
+            <label>Transit Veh. / LR No.</label>
+            <input type="text" id="vehNo" placeholder="MH-32-A-0000" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Sequence Section 3: Calculations -->
+      <div class="fp-section">
+        <div class="fp-section-title"><span class="dot"></span>3. Commodity & Logistics</div>
+        <div class="form-row">
+          <div class="fg">
+            <label>Goods Description</label>
+            <input type="text" id="goodsDesc" value="Fly Ash Bricks" required />
+          </div>
+          <div class="fg">
+            <label>Unit (Per)</label>
+            <input type="text" id="perUnit" value="Nos." required />
+          </div>
+        </div>
+        
+        <div class="form-row full">
+          <div class="fg">
+            <label>HSN / SAC Code</label>
+            <input type="text" id="hsnCode" placeholder="6815" />
+          </div>
+        </div>
+
+        <div class="mode-toggle-wrap">
+          <button type="button" class="mode-btn active" id="modeBtn1" onclick="setMode(false)">↗ Forward Engine</button>
+          <button type="button" class="mode-btn" id="modeBtn2" onclick="setMode(true)">↙ Reverse Breakdown</button>
+        </div>
+
+        <div id="mode1Fields">
+          <div class="form-row">
+            <div class="fg">
+              <label>Quantity</label>
+              <input type="number" id="quantity" placeholder="0" min="0" step="any" />
+            </div>
+            <div class="fg">
+              <label>Base Rate (₹)</label>
+              <input type="number" id="rate" placeholder="0.00" min="0" step="0.0001" />
+            </div>
+          </div>
+        </div>
+
+        <div id="mode2Fields" style="display:none">
+          <div class="form-row">
+            <div class="fg">
+              <label>Gross Rate (with GST)</label>
+              <input type="number" id="rateInclGST" placeholder="0.00" min="0" step="0.01" />
+            </div>
+            <div class="fg">
+              <label>Target Aggregate Total</label>
+              <input type="number" id="finalAmountInput" placeholder="0.00" min="0" step="0.01" />
+            </div>
+          </div>
+        </div>
+
+        <div class="form-row full">
+          <div class="fg">
+            <label>Add Royalty Surcharge (₹)</label>
+            <input type="number" id="royalty" value="0" min="0" step="0.01" />
+          </div>
+        </div>
+
+        <div class="calc-card">
+          <div class="calc-card-title">Live Breakdown HUD</div>
+          <div class="calc-row"><span class="cl">Assessable Taxable Value</span><span class="cv" id="d-taxable">—</span></div>
+          <div class="calc-row"><span class="cl">Royalty Outlay</span><span class="cv" id="d-royalty">₹ 0.00</span></div>
+          <div class="calc-row"><span class="cl">Central GST (2.5%)</span><span class="cv" id="d-cgst">—</span></div>
+          <div class="calc-row"><span class="cl">State GST (2.5%)</span><span class="cv" id="d-sgst">—</span></div>
+          <hr class="calc-divider">
+          <div class="calc-row"><span class="calc-total-label">Payable Total Gross</span><span class="calc-total" id="d-total">—</span></div>
+        </div>
+      </div>
+    </form>
+
+    <div class="form-bottom">
+      <button class="btn btn-ghost" style="background:#e5e7eb; color:var(--ink);" onclick="newBill()">Clear Map</button>
+      <button class="btn btn-primary" onclick="printBill()">Commit & Print</button>
+    </div>
+  </div>
+
+  <!-- PREVIEW WORKSPACE -->
+  <div class="preview-panel">
+    <div class="preview-label">Live Active Invoice Workspace</div>
+    <div class="status-bar" id="statusBar"></div>
+
+    <div class="bill" id="billPreview">
+      <div class="bill-header">
+        <div class="bill-biz-name">OM CONSTRUCTION AND MATERIAL SUPPLIERS</div>
+        <div class="bill-biz-type">Government Contractor &amp; Building Material Suppliers</div>
+        <div class="bill-address">Arvi, Dist. Wardha</div>
+        <div class="bill-gst-row">
+          <div>GST No.: <strong>27ADOPL7654G1Z2</strong></div>
+          <div>PAN No.: <strong>ADOPL7654G</strong></div>
+        </div>
+        <div class="bill-proprietor-row">
+          <div>Proprietor: <strong>Sunil N. Lokhande</strong></div>
+          <div>Mob.: <strong>9423961838</strong></div>
+        </div>
+      </div>
+
+      <div class="bill-meta-row">
+        <div class="bill-meta-cell">Invoice No.: <strong id="b-invoiceNo"></strong></div>
+        <div class="bill-meta-cell center"><span class="bill-title-box">TAX INVOICE</span></div>
+        <div class="bill-meta-cell" style="text-align:right">Date: <strong id="b-date"></strong></div>
+      </div>
+
+      <div class="bill-customer">
+        <div class="bill-customer-row">
+          <div class="bill-cust-cell"><strong>M/s:</strong> <span id="b-custName"></span></div>
+          <div class="bill-cust-cell"><strong>GST No.:</strong> <span id="b-custGST"></span></div>
+        </div>
+        <div class="bill-customer-row">
+          <div class="bill-cust-cell"><strong>Veh./LR No.:</strong> <span id="b-veh"></span></div>
+          <div class="bill-cust-cell"><strong>Place of Supply:</strong> <span id="b-place"></span></div>
+        </div>
+      </div>
+
+      <table class="bill-table">
+        <thead>
+          <tr>
+            <th style="width:40px">S.No.</th>
+            <th>Description of Goods</th>
+            <th style="width:90px">HSN/SAC</th>
+            <th style="width:90px">Quantity</th>
+            <th style="width:80px">Rate</th>
+            <th style="width:60px">Per</th>
+            <th style="width:110px">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td class="desc" id="b-desc"></td>
+            <td id="b-hsn"></td>
+            <td id="b-qty"></td>
+            <td class="num" id="b-rate"></td>
+            <td id="b-per"></td>
+            <td class="num" id="b-amt"></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="bill-summary-wrap">
+        <div class="bill-summary-left">&nbsp;</div>
+        <div class="bill-summary-right">
+          <div class="summary-row">
+            <div class="summary-label">Total Amount</div>
+            <div class="summary-val-rs" id="s-totalRs"></div>
+          </div>
+          <div class="summary-row">
+            <div class="summary-label">Add Royalty</div>
+            <div class="summary-val-rs" id="s-royaltyRs"></div>
+          </div>
+          <div class="summary-row">
+            <div class="summary-label">Add CGST @ 2.5%</div>
+            <div class="summary-val-rs" id="s-cgstRs"></div>
+          </div>
+          <div class="summary-row">
+            <div class="summary-label">Add SGST @ 2.5%</div>
+            <div class="summary-val-rs" id="s-sgstRs"></div>
+          </div>
+          <div class="summary-row bold">
+            <div class="summary-label">Total Amount</div>
+            <div class="summary-val-rs" id="s-finalRs"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bill-footer">
+        <div class="bill-words-row"><strong>Amount Chargeable (in words):</strong> <span id="b-words"></span></div>
+        <div class="bill-sign-row">
+          <div class="sign-block">
+            For <strong>OM CONSTRUCTION AND MATERIAL SUPPLIERS</strong>
+            <div class="sign-line">Authorised Signatory</div>
+          </div>
+        </div>
+        <div class="jurisdiction">Subject to Arvi Jurisdiction &nbsp;|&nbsp; Shri Ganesh Namah |</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+var isReverse = false;
+var hasUnsavedChanges = false;
+
+window.addEventListener('DOMContentLoaded', function() {
+  // Set default modern date entry pattern (Today)
+  var today = new Date().toISOString().split('T')[0];
+  g('invoiceDate').value = today;
+
+  var savedInvoice = localStorage.getItem('om_inv_no') || '036';
+  g('invoiceNo').value = savedInvoice;
+
+  // Global Change Monitor
+  document.querySelectorAll('input, select').forEach(function(element) {
+    element.addEventListener('input', function() {
+      hasUnsavedChanges = true;
+      updateBill();
+    });
+  });
+
+  // Rapid Keyboard Flow Engine Configuration
+  setupKeyboardEngine();
+  updateBill();
+});
+
+// Guard against high volume operational window closing data loss
+window.onbeforeunload = function() {
+  if (hasUnsavedChanges) {
+    return "You have raw active data inside the bill fields. Discard changes?";
+  }
+};
+
+function setupKeyboardEngine() {
+  var fields = Array.from(document.querySelectorAll('input:not([type="hidden"]), select'));
+  
+  fields.forEach(function(field, idx) {
+    field.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        var nextField = fields[idx + 1];
+        if (nextField) {
+          nextField.focus();
+        } else {
+          printBill(); // Trigger submission on final field step completion
+        }
+      }
+    });
+  });
+
+  // Global Shortcuts Context
+  window.addEventListener('keydown', function(e) {
+    if (e.ctrlKey && e.key === 's') {
+      e.preventDefault();
+      printBill();
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      newBill();
+    }
+  });
+}
+
+function setMode(rev) {
+  isReverse = rev;
+  g('modeBtn1').classList.toggle('active', !rev);
+  g('modeBtn2').classList.toggle('active', rev);
+  g('mode1Fields').style.display = rev ? 'none' : 'block';
+  g('mode2Fields').style.display = rev ? 'block' : 'none';
+  updateBill();
+}
+
+function g(id){ return document.getElementById(id); }
+function val(id){ return g(id) ? g(id).value.trim() : ''; }
+function setText(id, v){ var e = g(id); if(e) e.textContent = v; }
+
+function fmt(n) {
+  if (isNaN(n) || n === 0) return '0.00';
+  return parseFloat(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function setRsPs(prefix, amount) {
+  if (!amount) { setText(prefix + 'Rs', '0.00'); return; }
+  var total = Math.round(amount * 100);
+  var rs = Math.floor(total / 100);
+  var ps = total % 100;
+  setText(prefix + 'Rs', rs.toLocaleString('en-IN') + '.' + String(ps).padStart(2, '0'));
+}
+
+function updateBill() {
+  setText('b-invoiceNo', val('invoiceNo'));
+  
+  // Format localized UI date presentation
+  var dVal = val('invoiceDate');
+  if (dVal) {
+    var parts = dVal.split('-');
+    if (parts.length === 3) {
+      setText('b-date', parts[2] + '-' + parts[1] + '-' + parts[0]);
+    }
+  }
+
+  setText('b-custName', val('customerName'));
+  setText('b-custGST', val('customerGST').toUpperCase());
+  setText('b-veh', val('vehNo').toUpperCase());
+  setText('b-place', val('placeOfSupply'));
+  setText('b-desc', val('goodsDesc'));
+  setText('b-per', val('perUnit'));
+  setText('b-hsn', val('hsnCode') || '—');
+
+  var royalty = parseFloat(val('royalty')) || 0;
+  var taxable = 0;
+  var qty = '';
+  var rateDisp = '';
+
+  if (!isReverse) {
+    var q = parseFloat(val('quantity')) || 0;
+    var r = parseFloat(val('rate')) || 0;
+    taxable = q * r;
+    qty = q || '';
+    rateDisp = r ? fmt(r) : '';
+  } else {
+    var ri = parseFloat(val('rateInclGST')) || 0;
+    var fi = parseFloat(val('finalAmountInput')) || 0;
+    taxable = fi > 0 ? fi / 1.05 : 0;
+    var rateExcl = ri > 0 ? ri / 1.05 : 0;
+    qty = (rateExcl > 0 && fi > 0) ? Math.round(taxable / rateExcl) : '';
+    rateDisp = rateExcl ? fmt(rateExcl) : '';
+  }
+
+  var cgst = taxable * 0.025;
+  var sgst = taxable * 0.025;
+  var total = taxable + royalty + cgst + sgst;
+
+  setText('b-qty', qty);
+  setText('b-rate', rateDisp);
+
+  // HUD Outputs
+  setText('d-taxable', taxable ? '₹ ' + fmt(taxable) : '—');
+  setText('d-royalty', '₹ ' + fmt(royalty));
+  setText('d-cgst', taxable ? '₹ ' + fmt(cgst) : '—');
+  setText('d-sgst', taxable ? '₹ ' + fmt(sgst) : '—');
+  setText('d-total', total ? '₹ ' + fmt(total) : '—');
+
+  setText('b-amt', taxable ? fmt(taxable) : '');
+
+  // Render Table Summary Footers
+  setRsPs('s-total', taxable);
+  setRsPs('s-royalty', royalty);
+  setRsPs('s-cgst', cgst);
+  setRsPs('s-sgst', sgst);
+  setRsPs('s-final', total);
+
+  if (total > 0) {
+    var totalRounded = Math.round(total * 100);
+    var rsPart = Math.floor(totalRounded / 100);
+    var psPart = totalRounded % 100;
+    var words = 'Rupees ' + numToWords(rsPart);
+    if (psPart > 0) words += ' and ' + numToWords(psPart) + ' Paise';
+    words += ' Only';
+    setText('b-words', ' ' + words);
+  } else {
+    setText('b-words', '');
+  }
+
+  updateStatus(total, taxable);
+}
+
+function updateStatus(total, taxable) {
+  var bar = g('statusBar');
+  if (!bar) return;
+  bar.innerHTML = '';
+  var invNo = val('invoiceNo');
+  if (invNo) bar.innerHTML += '<span class="badge badge-blue">Inv #' + invNo + '</span>';
+  if (taxable > 0) bar.innerHTML += '<span class="badge badge-green">Tax Base: ₹' + fmt(taxable) + '</span>';
+  if (total > 0) bar.innerHTML += '<span class="badge badge-warn">Aggregate Pay: ₹' + fmt(total) + '</span>';
+}
+
+function printBill() {
+  localStorage.setItem('om_inv_no', val('invoiceNo'));
+  hasUnsavedChanges = false;
+  window.print();
+}
+
+function newBill() {
+  if (hasUnsavedChanges && !confirm("Discard current billing information map?")) return;
+  
+  var currentNo = parseInt(val('invoiceNo'), 10) || 35;
+  g('invoiceForm').reset();
+  
+  g('invoiceNo').value = String(currentNo + 1).padStart(3, '0');
+  g('invoiceDate').value = new Date().toISOString().split('T')[0];
+  hasUnsavedChanges = false;
+  setMode(false);
+  g('invoiceNo').focus();
+}
+
+function numToWords(n) {
+  if (n === 0) return 'Zero';
+  var ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+  var tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+  function conv(num) {
+    if (num === 0) return '';
+    if (num < 20) return ones[num] + ' ';
+    if (num < 100) return tens[Math.floor(num / 10)] + (num % 10 ? ' ' + ones[num % 10] : '') + ' ';
+    if (num < 1000) return ones[Math.floor(num / 100)] + ' Hundred ' + conv(num % 100);
+    return '';
+  }
+  var r = '';
+  var cr = Math.floor(n / 10000000); n %= 10000000;
+  var la = Math.floor(n / 100000); n %= 100000;
+  var th = Math.floor(n / 1000); n %= 1000;
+  if (cr) r += conv(cr) + 'Crore ';
+  if (la) r += conv(la) + 'Lakh ';
+  if (th) r += conv(th) + 'Thousand ';
+  if (n) r += conv(n);
+  return r.trim();
+}
+</script>
+</body>
+</html>
